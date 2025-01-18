@@ -46,24 +46,50 @@ extension CameraController {
 
         func configureCaptureDevices() throws {
 
-            let session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: AVMediaType.video, position: .unspecified)
+            // let session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: AVMediaType.video, position: .unspecified)
 
-            let cameras = session.devices.compactMap { $0 }
-            guard !cameras.isEmpty else { throw CameraControllerError.noCamerasAvailable }
+            // let cameras = session.devices.compactMap { $0 }
+            // guard !cameras.isEmpty else { throw CameraControllerError.noCamerasAvailable }
 
-            for camera in cameras {
-                if camera.position == .front {
-                    self.frontCamera = camera
-                }
+            // for camera in cameras {
+            //     if camera.position == .front {
+            //         self.frontCamera = camera
+            //     }
 
-                if camera.position == .back {
-                    self.rearCamera = camera
+            //     if camera.position == .back {
+            //         self.rearCamera = camera
 
-                    try camera.lockForConfiguration()
-                    camera.focusMode = .continuousAutoFocus
-                    camera.unlockForConfiguration()
-                }
-            }
+            //         try camera.lockForConfiguration()
+            //         camera.focusMode = .continuousAutoFocus
+            //         camera.unlockForConfiguration()
+            //     }
+            // }
+
+            // For the front camera we are simply using the default one. iOS will automatically provide the best fit here
+            self.frontCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: AVMediaType.video, position: .front)
+
+            // For the rear camera we'll use a discovery session that will follow the list of "best" cameras to choose from
+            let deviceTypes: [AVCaptureDevice.DeviceType] = [
+                .builtInTripleCamera,
+                .builtInDualWideCamera,
+                .builtInDualCamera,
+                .builtInWideAngleCamera,
+            ]
+
+            let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: AVMediaType.video, position: .back)
+
+            // We then define the first camera as rear camera. The devices are already sorted based on the provided device types
+            // See: https://developer.apple.com/documentation/avfoundation/capture_setup/choosing_a_capture_device#2958877
+            guard let rearCamera = discoverySession.devices.first else { throw CameraControllerError.noCamerasAvailable }
+
+            try rearCamera.lockForConfiguration()
+            rearCamera.focusMode = .continuousAutoFocus
+            rearCamera.exposureMode = .continuousAutoExposure
+            rearCamera.unlockForConfiguration()
+
+            self.rearCamera = rearCamera
+
+
             if disableAudio == false {
                 self.audioDevice = AVCaptureDevice.default(for: AVMediaType.audio)
             }
